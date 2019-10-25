@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.1"
+ThisBuild / scalaVersion := Versions.scala213
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "ag.rob"
 ThisBuild / organizationName := "Andreas Gabor"
@@ -12,7 +12,8 @@ lazy val root = (project in file("."))
       "com.lightbend.akka" %% "akka-stream-alpakka-s3" % Versions.alpakka,
       "com.typesafe.akka" %% "akka-persistence-tck" % Versions.akka % Test,
       "org.gaul" % "s3proxy" % Versions.s3proxy % Test
-    )
+    ),
+    crossScalaVersions := Versions.supportedScalaVersions
   )
 
 // See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.
