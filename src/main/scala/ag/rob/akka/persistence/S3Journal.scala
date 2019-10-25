@@ -1,7 +1,6 @@
 package ag.rob.akka.persistence
 
 import akka.Done
-import akka.http.scaladsl.model.ContentTypes
 import akka.persistence.journal.AsyncWriteJournal
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.serialization.SerializationExtension
@@ -51,10 +50,15 @@ class S3Journal extends AsyncWriteJournal {
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = ???
 
   override def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)(recoveryCallback: PersistentRepr => Unit) = {
-    S3.listBucket(bucket, Some(persistenceId)).take(max).mapAsync(1) { content =>
-      val persistenceId :: sequenceNr :: Nil = content.key.split('/').toList
-      val sequenceNrLong = sequenceNr.toLong
-      if (sequenceNrLong >= fromSequenceNr && sequenceNrLong <= toSequenceNr) {
+    S3
+      .listBucket(bucket, Some(persistenceId))
+      .filter { listBucketResultsContent =>
+        val _ :: sequenceNr :: Nil = listBucketResultsContent.key.split('/').toList
+        val sequenceNrLong = sequenceNr.toLong
+        sequenceNrLong >= fromSequenceNr && sequenceNrLong <= toSequenceNr
+      }
+      .take(max)
+      .mapAsync(1) { content =>
         S3.download(bucket, content.key).mapAsync(1) { maybeContent =>
           maybeContent.map { case (source, metaData) =>
             source.runForeach { payload =>
@@ -63,7 +67,7 @@ class S3Journal extends AsyncWriteJournal {
               val deserialized = serialization.deserializeByteBuffer(payload.asByteBuffer, serializerId, manifest)
               val repr = PersistentRepr(
                 deserialized,
-                sequenceNrLong,
+                metaData.metadata.find(_.is("x-amz-meta-sequencenr")).get.value().toLong,
                 persistenceId,
                 manifest,
                 deleted = metaData.metadata.find(_.is("x-amz-meta-deleted")).get.value().toBoolean,
@@ -73,12 +77,8 @@ class S3Journal extends AsyncWriteJournal {
             }
           }.getOrElse(Future.successful(Done))
         }.runForeach(_ => Done)
-      } else Future.successful(Done)
-    }.runForeach { _ =>
-      Done
-    }.map { _ =>
-      ()
-    }
+      }.runForeach(_ => Done)
+      .map(_ => ())
   }
 
   override def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long) = {
