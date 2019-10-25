@@ -22,11 +22,14 @@ class S3JournalSpec extends JournalSpec(
        |  endpoint-url = "http://localhost:${S3Mock.port}"
        |}
        |s3-journal.bucket = "${S3Mock.bucket}"
-       |""".stripMargin).withFallback(ConfigFactory.load())) {
+       |""".stripMargin).withFallback(ConfigFactory.load())
+) {
 
-  override def supportsRejectingNonSerializableObjects = CapabilityFlag.off
+  override def supportsRejectingNonSerializableObjects = false
 
-  override def supportsSerialization = CapabilityFlag.off
+  override def supportsSerialization = false
+
+  override def supportsAtomicPersistAllOfSeveralEvents = false
 
   protected override def beforeAll() = {
     super.beforeAll()

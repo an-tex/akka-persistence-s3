@@ -22,12 +22,11 @@ class S3Journal extends AsyncWriteJournal {
   val bucket = context.system.settings.config.getString("s3-journal.bucket")
 
   override def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]) = {
-    Future.sequence(messages.map { message =>
-      lazy val highestSequenceNrUpdate = S3
-        .putObject(bucket, s"${message.persistenceId}/$metaDataKey", Source.empty, 0, s3Headers = S3Headers().withMetaHeaders(MetaHeaders(Map("highestSequenceNr" -> message.highestSequenceNr.toString))))
-        .runWith(Sink.ignore)
+    Future.sequence(messages.groupBy(_.persistenceId).map { case (persistenceId: String, writes: Seq[AtomicWrite]) =>
+      Source.fromIterator(() => writes.iterator).flatMapMerge(1, { atomicWrite =>
+        if (atomicWrite.payload.length > 1) throw new UnsupportedOperationException
 
-      val payloadPuts = Future.sequence(message.payload.map { persistentRepr =>
+        val persistentRepr = atomicWrite.payload.head
         val payloadAnyRef = persistentRepr.payload.asInstanceOf[AnyRef]
         val serializer = serialization.findSerializerFor(payloadAnyRef)
         val bytes = serializer.toBinary(payloadAnyRef)
@@ -46,14 +45,10 @@ class S3Journal extends AsyncWriteJournal {
             "serializerId" -> serializer.identifier.toString
           )))
         )
-          .runWith(Sink.ignore)
-      })
-
-      for {
-        _ <- payloadPuts
-        _ <- highestSequenceNrUpdate
-      } yield Success()
-    })
+      }).concat(S3
+        .putObject(bucket, s"$persistenceId/$metaDataKey", Source.empty, 0, s3Headers = S3Headers().withMetaHeaders(MetaHeaders(Map("highestSequenceNr" -> writes.foldLeft(0L)((previous, atomicWrite) => Math.max(previous, atomicWrite.highestSequenceNr)).toString)))))
+        .runWith(Sink.ignore)
+    }.toSeq).map(_ => Nil)
   }
 
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = {
