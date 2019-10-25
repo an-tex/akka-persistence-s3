@@ -1,6 +1,7 @@
 package ag.rob.akka.persistence
 
 import akka.Done
+import akka.http.scaladsl.model.ContentTypes
 import akka.persistence.journal.AsyncWriteJournal
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.serialization.SerializationExtension
@@ -19,11 +20,11 @@ class S3Journal extends AsyncWriteJournal {
   implicit val materializer = ActorMaterializer()
   implicit val ec: ExecutionContext = context.dispatcher
 
-  val bucket = "akka-s3-persistence"
+  val bucket = context.system.settings.config.getString("s3-journal.bucket")
 
   override def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]) = {
-    Future.sequence(messages.flatMap { message =>
-      message.payload.map { persistentRepr =>
+    Future.sequence(messages.map { message =>
+      Future.sequence(message.payload.map { persistentRepr =>
         val payloadAnyRef = persistentRepr.payload.asInstanceOf[AnyRef]
         val serializer = serialization.findSerializerFor(payloadAnyRef)
         val bytes = serializer.toBinary(payloadAnyRef)
@@ -37,21 +38,20 @@ class S3Journal extends AsyncWriteJournal {
             "writeUuid" -> persistentRepr.writerUuid,
             "deleted" -> persistentRepr.deleted.toString,
             "serializerId" -> serializer.identifier.toString
-          )
-          )
+          ))
         )
         Source
           .single(ByteString(bytes))
           .runWith(sink)
           .map(_ => Success())
-      }
+      }).map(_ => Success())
     })
   }
 
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = ???
 
   override def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)(recoveryCallback: PersistentRepr => Unit) = {
-    S3.listBucket(bucket, Some(persistenceId)).mapAsync(1) { content =>
+    S3.listBucket(bucket, Some(persistenceId)).take(max).mapAsync(1) { content =>
       val persistenceId :: sequenceNr :: Nil = content.key.split('/').toList
       val sequenceNrLong = sequenceNr.toLong
       if (sequenceNrLong >= fromSequenceNr && sequenceNrLong <= toSequenceNr) {
@@ -69,7 +69,6 @@ class S3Journal extends AsyncWriteJournal {
                 deleted = metaData.metadata.find(_.is("x-amz-meta-deleted")).get.value().toBoolean,
                 writerUuid = metaData.metadata.find(_.is("x-amz-meta-writeuuid")).get.value()
               )
-              println(s"got payload $sequenceNrLong: $repr")
               recoveryCallback(repr)
             }
           }.getOrElse(Future.successful(Done))
