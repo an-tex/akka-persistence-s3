@@ -11,7 +11,6 @@ lazy val root = (project in file("."))
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
       "com.lightbend.akka" %% "akka-stream-alpakka-s3" % Versions.alpakka,
       "com.typesafe.akka" %% "akka-persistence-tck" % Versions.akka % Test,
-      "com.adobe.testing" % "s3mock" % Versions.s3mock % Test,
       "org.gaul" % "s3proxy" % Versions.s3proxy % Test
     )
   )

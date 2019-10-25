@@ -5,9 +5,9 @@ import akka.persistence.journal.AsyncWriteJournal
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.serialization.SerializationExtension
 import akka.stream.ActorMaterializer
-import akka.stream.alpakka.s3.MetaHeaders
 import akka.stream.alpakka.s3.scaladsl.S3
-import akka.stream.scaladsl.Source
+import akka.stream.alpakka.s3.{MetaHeaders, S3Headers}
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
 import scala.collection.immutable
@@ -23,39 +23,67 @@ class S3Journal extends AsyncWriteJournal {
 
   override def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]) = {
     Future.sequence(messages.map { message =>
-      Future.sequence(message.payload.map { persistentRepr =>
+      lazy val highestSequenceNrUpdate = S3
+        .putObject(bucket, s"${message.persistenceId}/$metaDataKey", Source.empty, 0, s3Headers = S3Headers().withMetaHeaders(MetaHeaders(Map("highestSequenceNr" -> message.highestSequenceNr.toString))))
+        .runWith(Sink.ignore)
+
+      val payloadPuts = Future.sequence(message.payload.map { persistentRepr =>
         val payloadAnyRef = persistentRepr.payload.asInstanceOf[AnyRef]
         val serializer = serialization.findSerializerFor(payloadAnyRef)
         val bytes = serializer.toBinary(payloadAnyRef)
-        val sink = S3.multipartUpload(
+
+        S3.putObject(
           bucket,
           s"${persistentRepr.persistenceId}/${persistentRepr.sequenceNr}",
-          metaHeaders = MetaHeaders(Map(
+          Source.single(ByteString(bytes)),
+          bytes.length,
+          s3Headers = S3Headers().withMetaHeaders(MetaHeaders(Map(
             "persistenceId" -> persistentRepr.persistenceId,
             "sequenceNr" -> persistentRepr.sequenceNr.toString,
             "manifest" -> persistentRepr.manifest,
             "writeUuid" -> persistentRepr.writerUuid,
             "deleted" -> persistentRepr.deleted.toString,
             "serializerId" -> serializer.identifier.toString
-          ))
+          )))
         )
-        Source
-          .single(ByteString(bytes))
-          .runWith(sink)
-          .map(_ => Success())
-      }).map(_ => Success())
+          .runWith(Sink.ignore)
+      })
+
+      for {
+        _ <- payloadPuts
+        _ <- highestSequenceNrUpdate
+      } yield Success()
     })
   }
 
-  override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = ???
+  override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = {
+    S3
+      .listBucket(bucket, Some(persistenceId))
+      .filter { listBucketResultsContent =>
+        if (listBucketResultsContent.key.endsWith(metaDataKey)) false
+        else {
+          val _ :: sequenceNr :: Nil = listBucketResultsContent.key.split('/').toList
+          val sequenceNrLong = sequenceNr.toLong
+          sequenceNrLong <= toSequenceNr
+        }
+      }
+      .mapAsync(1)(content =>
+        S3.deleteObject(bucket, content.key).runForeach(_ => Done)
+      )
+      .runWith(Sink.ignore)
+      .map(_ => ())
+  }
 
   override def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)(recoveryCallback: PersistentRepr => Unit) = {
     S3
       .listBucket(bucket, Some(persistenceId))
       .filter { listBucketResultsContent =>
-        val _ :: sequenceNr :: Nil = listBucketResultsContent.key.split('/').toList
-        val sequenceNrLong = sequenceNr.toLong
-        sequenceNrLong >= fromSequenceNr && sequenceNrLong <= toSequenceNr
+        if (listBucketResultsContent.key.endsWith(metaDataKey)) false
+        else {
+          val _ :: sequenceNr :: Nil = listBucketResultsContent.key.split('/').toList
+          val sequenceNrLong = sequenceNr.toLong
+          sequenceNrLong >= fromSequenceNr && sequenceNrLong <= toSequenceNr
+        }
       }
       .take(max)
       .mapAsync(1) { content =>
@@ -76,18 +104,14 @@ class S3Journal extends AsyncWriteJournal {
               recoveryCallback(repr)
             }
           }.getOrElse(Future.successful(Done))
-        }.runForeach(_ => Done)
-      }.runForeach(_ => Done)
+        }.runWith(Sink.ignore)
+      }.runWith(Sink.ignore)
       .map(_ => ())
   }
 
-  override def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long) = {
-    S3.listBucket(bucket, Some(persistenceId)).runFold(0L) { case (previous, content) =>
-      val (_, sequenceNr) = content.key.splitAt(content.key.indexOf("/") + 1)
-      val sequenceNrLong = sequenceNr.toLong
+  val metaDataKey = "0_METADATA"
 
-      if (sequenceNr.toLong > previous) sequenceNrLong
-      else previous
-    }
+  override def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long) = {
+    S3.getObjectMetadata(bucket, s"$persistenceId/$metaDataKey").runWith(Sink.head).map(_.fold(0L)(_.metadata.find(_.is("x-amz-meta-highestsequencenr")).get.value().toLong))
   }
 }
