@@ -18,7 +18,13 @@ class S3JournalSpec extends JournalSpec(
     s"""
        |akka.persistence.journal.plugin = "s3-journal"
        |alpakka.s3 {
-       |  aws.credentials.provider = anon
+       |  aws {
+       |    credentials.provider = anon
+       |    region {
+       |      provider = static
+       |      default-region = "eu-central-1"
+       |    }
+       |  }
        |  endpoint-url = "http://localhost:${S3Mock.port}"
        |}
        |s3-journal.bucket = "${S3Mock.bucket}"
