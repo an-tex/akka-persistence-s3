@@ -5,8 +5,7 @@ scala:
   - 2.11.12
 
 script:
-  - sbt test
-  - sbt publish
+  - sbt test publish
 
 cache:
   directories:
