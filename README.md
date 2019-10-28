@@ -7,9 +7,9 @@ Akka Persistence Backend Plugin using S3. It's not production ready yet but pass
 
 # Usage
 
-To your build.sbt add the resolver and dependency:
+To your `build.sbt` add the resolver and dependency:
 
 ```sbt
 resolvers += Resolver.bintrayRepo("antex", "maven")
-libraryDependencies += "ag.rob" %% "akka-persistence-s3" % "0.3"
+libraryDependencies += "ag.rob" %% "akka-persistence-s3" % VERSION
 ```
