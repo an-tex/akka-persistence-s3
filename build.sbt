@@ -1,9 +1,11 @@
 ThisBuild / scalaVersion := Versions.scala213
-ThisBuild / version := "0.2"
+ThisBuild / version := "0.3"
 ThisBuild / organization := "ag.rob"
 ThisBuild / organizationName := "Andreas Gabor"
 
 licenses += ("GPL-3.0", url("https://opensource.org/licenses/GPL-3.0"))
+
+publish / skip := isSnapshot.value
 
 lazy val root = (project in file("."))
   .settings(
