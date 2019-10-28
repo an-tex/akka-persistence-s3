@@ -5,7 +5,7 @@ object Versions {
   val s3mock = "2.1.16"
   val s3proxy = "1.7.0"
 
-  // update .travis.yml too
+  // keep in sync with .travis.yml
   val scala213 = "2.13.1"
   val scala212 = "2.12.10"
   val scala211 = "2.11.12"
