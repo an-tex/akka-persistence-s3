@@ -1,7 +1,9 @@
 ThisBuild / scalaVersion := Versions.scala213
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.1"
 ThisBuild / organization := "ag.rob"
 ThisBuild / organizationName := "Andreas Gabor"
+
+licenses += ("GPL-3.0", url("https://opensource.org/licenses/GPL-3.0"))
 
 lazy val root = (project in file("."))
   .settings(
@@ -15,5 +17,3 @@ lazy val root = (project in file("."))
     ),
     crossScalaVersions := Versions.supportedScalaVersions
   )
-
-// See https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for instructions on how to publish to Sonatype.
