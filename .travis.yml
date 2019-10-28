@@ -5,7 +5,7 @@ scala:
   - 2.11.12
 
 script:
-  - sbt test publish
+  - sbt ++$TRAVIS_SCALA_VERSION test publish
 
 cache:
   directories:
