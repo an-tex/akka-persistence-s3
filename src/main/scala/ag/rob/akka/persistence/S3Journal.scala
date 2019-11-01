@@ -58,7 +58,7 @@ class S3Journal extends AsyncWriteJournal {
 
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = {
     S3
-      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("/", "|")))
+      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/")))
       .filter { listBucketResultsContent =>
         if (listBucketResultsContent.key.endsWith(metaDataKey)) false
         else {
@@ -95,7 +95,7 @@ class S3Journal extends AsyncWriteJournal {
               val repr = PersistentRepr(
                 deserialized,
                 metaData.metadata.find(_.is("x-amz-meta-sequencenr")).get.value().toLong,
-                persistenceId.replaceAllLiterally("/", "|"),
+                persistenceId,
                 metaData.metadata.find(_.is("x-amz-meta-manifest")).get.value(),
                 deleted = metaData.metadata.find(_.is("x-amz-meta-deleted")).get.value().toBoolean,
                 writerUuid = metaData.metadata.find(_.is("x-amz-meta-writeuuid")).get.value()
@@ -111,6 +111,6 @@ class S3Journal extends AsyncWriteJournal {
   val metaDataKey = "0_METADATA"
 
   override def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long) = {
-    S3.getObjectMetadata(bucket, s"${persistenceId.replaceAllLiterally("/","|")}/$metaDataKey").runWith(Sink.head).map(_.fold(0L)(_.metadata.find(_.is("x-amz-meta-highestsequencenr")).get.value().toLong))
+    S3.getObjectMetadata(bucket, s"${persistenceId.replaceAllLiterally("|","/")}/$metaDataKey").runWith(Sink.head).map(_.fold(0L)(_.metadata.find(_.is("x-amz-meta-highestsequencenr")).get.value().toLong))
   }
 }
