@@ -11,7 +11,7 @@ lazy val root = (project in file(".")).aggregate(akkaPersistenceS3, lagomPersist
 lazy val akkaPersistenceS3 = (project in file("akka-persistence-s3"))
   .settings(
     name := "akka-persistence-s3",
-    version := "0.3-SNAPSHOT",
+    version := Versions.akkaPersistenceS3,
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % Versions.scalaTest % Test,
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
@@ -25,7 +25,7 @@ lazy val akkaPersistenceS3 = (project in file("akka-persistence-s3"))
 lazy val lagomPersistenceS3 = (project in file("lagom-persistence-s3"))
   .settings(
     name := "lagom-persistence-s3",
-    version := "0.1-SNAPSHOT",
+    version := Versions.lagomPersistenceS3,
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
       "com.lightbend.lagom" %% "lagom-scaladsl-persistence" % Versions.lagom,
