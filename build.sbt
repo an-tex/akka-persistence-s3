@@ -2,7 +2,7 @@ ThisBuild / scalaVersion := Versions.scala212
 ThisBuild / organization := "ag.rob"
 ThisBuild / organizationName := "Andreas Gabor"
 
-licenses += ("GPL-3.0", url("https://opensource.org/licenses/GPL-3.0"))
+ThisBuild / licenses += ("GPL-3.0", url("https://opensource.org/licenses/GPL-3.0"))
 
 publish / skip := isSnapshot.value
 
