@@ -1,5 +1,4 @@
-ThisBuild / scalaVersion := Versions.scala213
-ThisBuild / version := "0.3-SNAPSHOT"
+ThisBuild / scalaVersion := Versions.scala212
 ThisBuild / organization := "ag.rob"
 ThisBuild / organizationName := "Andreas Gabor"
 
@@ -7,9 +6,12 @@ licenses += ("GPL-3.0", url("https://opensource.org/licenses/GPL-3.0"))
 
 publish / skip := isSnapshot.value
 
-lazy val root = (project in file("."))
+lazy val root = (project in file(".")).aggregate(akkaPersistenceS3, lagomPersistenceS3)
+
+lazy val akkaPersistenceS3 = (project in file("akka-persistence-s3"))
   .settings(
     name := "akka-persistence-s3",
+    version := "0.3-SNAPSHOT",
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % Versions.scalaTest % Test,
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
@@ -19,3 +21,14 @@ lazy val root = (project in file("."))
     ),
     crossScalaVersions := Versions.supportedScalaVersions
   )
+
+lazy val lagomPersistenceS3 = (project in file("lagom-persistence-s3"))
+  .settings(
+    name := "lagom-persistence-s3",
+    version := "0.1-SNAPSHOT",
+    libraryDependencies ++= Seq(
+      "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
+      "com.lightbend.lagom" %% "lagom-scaladsl-persistence" % Versions.lagom,
+    ),
+    crossScalaVersions := Versions.supportedScalaVersions
+  ).dependsOn(akkaPersistenceS3)
