@@ -15,6 +15,7 @@ lazy val akkaPersistenceS3 = (project in file("akka-persistence-s3"))
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % Versions.scalaTest % Test,
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
+      "com.typesafe.akka" %% "akka-persistence-query" % Versions.akka,
       "com.lightbend.akka" %% "akka-stream-alpakka-s3" % Versions.alpakka,
       "com.typesafe.akka" %% "akka-persistence-tck" % Versions.akka % Test,
       "org.gaul" % "s3proxy" % Versions.s3proxy % Test

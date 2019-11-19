@@ -80,7 +80,7 @@ class S3Journal extends AsyncWriteJournal {
       .filter { listBucketResultsContent =>
         if (listBucketResultsContent.key.endsWith(metaDataKey)) false
         else {
-          val _ :: sequenceNr :: Nil = listBucketResultsContent.key.split('/').toList
+          val _ :: _ :: sequenceNr :: Nil = listBucketResultsContent.key.split('/').toList
           val sequenceNrLong = sequenceNr.toLong
           sequenceNrLong >= fromSequenceNr && sequenceNrLong <= toSequenceNr
         }
