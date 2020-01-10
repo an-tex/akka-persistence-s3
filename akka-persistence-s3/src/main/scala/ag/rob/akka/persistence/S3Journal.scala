@@ -4,7 +4,6 @@ import akka.Done
 import akka.persistence.journal.{AsyncWriteJournal, Tagged}
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.serialization.{SerializationExtension, Serializers}
-import akka.stream.ActorMaterializer
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.alpakka.s3.{MetaHeaders, S3Headers}
 import akka.stream.scaladsl.{Sink, Source}
@@ -15,7 +14,9 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class S3Journal extends AsyncWriteJournal {
   val serialization = SerializationExtension(context.system)
-  implicit val materializer = ActorMaterializer()
+
+  import context.system
+
   implicit val ec: ExecutionContext = context.dispatcher
 
   val bucket = context.system.settings.config.getString("s3-journal.bucket")
@@ -111,6 +112,6 @@ class S3Journal extends AsyncWriteJournal {
   val metaDataKey = "0_METADATA"
 
   override def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long) = {
-    S3.getObjectMetadata(bucket, s"${persistenceId.replaceAllLiterally("|","/")}/$metaDataKey").runWith(Sink.head).map(_.fold(0L)(_.metadata.find(_.is("x-amz-meta-highestsequencenr")).get.value().toLong))
+    S3.getObjectMetadata(bucket, s"${persistenceId.replaceAllLiterally("|", "/")}/$metaDataKey").runWith(Sink.head).map(_.fold(0L)(_.metadata.find(_.is("x-amz-meta-highestsequencenr")).get.value().toLong))
   }
 }
