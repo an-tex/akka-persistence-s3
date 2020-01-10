@@ -58,7 +58,7 @@ object S3JournalSpec {
        |      default-region = "eu-central-1"
        |    }
        |  }
-       |  endpoint-url = "http://localhost:9876"
+       |  endpoint-url = "http://127.0.0.1:9876"
        |}
        |s3-journal.bucket = "$testBucket"
        |""".stripMargin).withFallback(ConfigFactory.load())
