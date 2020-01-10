@@ -6,7 +6,7 @@ import org.scalatest.Ignore
 
 import scala.concurrent.duration._
 
-//@Ignore
+@Ignore
 class S3JournalPerfSpec extends JournalPerfSpec(S3JournalSpec.minioConfig.withFallback(ConfigFactory.parseString(
   """
     |akka.actor.serialization-bindings {
