@@ -1,9 +1,14 @@
 language: scala
 # keep in sync with project/Versions.supportedScalaVersions
 scala:
-#  - 2.13.1
+  - 2.13.1
   - 2.12.10
-#  - 2.11.12
+
+services:
+  - docker
+
+install:
+  - docker-compose up -d
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION test publish

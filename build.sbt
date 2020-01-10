@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := Versions.scala212
+ThisBuild / scalaVersion := Versions.scala213
 ThisBuild / organization := "ag.rob"
 ThisBuild / organizationName := "Andreas Gabor"
 
@@ -13,14 +13,14 @@ lazy val akkaPersistenceS3 = (project in file("akka-persistence-s3"))
     name := "akka-persistence-s3",
     version := Versions.akkaPersistenceS3,
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % Versions.scalaTest % Test,
+      "com.lightbend.akka" %% "akka-stream-alpakka-s3" % Versions.alpakka,
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
       "com.typesafe.akka" %% "akka-http-xml" % Versions.akkaHttp,
       "com.typesafe.akka" %% "akka-persistence-query" % Versions.akka,
-      "com.lightbend.akka" %% "akka-stream-alpakka-s3" % Versions.alpakka,
       "com.typesafe.akka" %% "akka-persistence-tck" % Versions.akka % Test,
-      "org.gaul" % "s3proxy" % Versions.s3proxy % Test,
-      "com.adobe.testing" % "s3mock" % Versions.s3mock % Test,
+      "com.typesafe.akka" %% "akka-serialization-jackson" % Versions.akka % Test,
+      "org.scalatest" %% "scalatest" % Versions.scalaTest % Test,
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3"
     ),
     crossScalaVersions := Versions.supportedScalaVersions
   )

@@ -7,7 +7,7 @@ object Versions {
   val scala212 = "2.12.10"
 
   lazy val supportedScalaVersions = List(
-    //scala213,
+    scala213,
     scala212
   )
 
@@ -16,7 +16,4 @@ object Versions {
   val lagom = "1.6.0"
   val alpakka = "2.0.0-M2"
   val scalaTest = "3.0.8"
-  //val s3mock = "2.1.16"
-  val s3mock = "2.1.17-SNAPSHOT"
-  val s3proxy = "1.7.0"
 }
