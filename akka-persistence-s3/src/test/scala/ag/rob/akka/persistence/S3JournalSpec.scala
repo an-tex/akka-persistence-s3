@@ -53,6 +53,10 @@ object S3JournalSpec {
        |      access-key-id = "minio"
        |      secret-access-key = "minio123"
        |    }
+       |    region {
+       |      provider = static
+       |      default-region = "eu-central-1"
+       |    }
        |  }
        |  endpoint-url = "http://localhost:9876"
        |}
