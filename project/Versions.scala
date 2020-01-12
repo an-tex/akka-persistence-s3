@@ -1,6 +1,6 @@
 object Versions {
-  val akkaPersistenceS3 = "0.5"
-  val lagomPersistenceS3 = "0.3"
+  val akkaPersistenceS3 = "0.6-SNAPSHOT"
+  val lagomPersistenceS3 = "0.4-SNAPSHOT"
 
   // keep in sync with .travis.yml
   val scala213 = "2.13.1"
