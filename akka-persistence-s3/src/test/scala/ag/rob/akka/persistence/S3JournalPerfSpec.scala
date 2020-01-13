@@ -12,6 +12,13 @@ class S3JournalPerfSpec extends JournalPerfSpec(S3JournalSpec.minioConfig.withFa
     |akka.actor.serialization-bindings {
     |  "akka.persistence.journal.JournalPerfSpec$Cmd" = jackson-json
     |}
+    |s3-journal {
+    |  circuit-breaker {
+    |    max-failures = 10
+    |    call-timeout = 60s
+    |    reset-timeout = 30s
+    |  }
+    |}
     |""".stripMargin))) {
   override def supportsRejectingNonSerializableObjects = false
 
@@ -19,9 +26,9 @@ class S3JournalPerfSpec extends JournalPerfSpec(S3JournalSpec.minioConfig.withFa
 
   override def supportsAtomicPersistAllOfSeveralEvents = false
 
-  override def awaitDurationMillis = 1.minute.toMillis
+  override def awaitDurationMillis = 5.minute.toMillis
 
-  override def eventsCount = 1010
+  override def eventsCount = 10 * 1000
 
   protected override def beforeAll() = {
     super.beforeAll()
@@ -29,7 +36,7 @@ class S3JournalPerfSpec extends JournalPerfSpec(S3JournalSpec.minioConfig.withFa
   }
 
   protected override def afterAll() = {
-    S3JournalSpec.afterAll()
+    //S3JournalSpec.afterAll()
     super.afterAll()
   }
 }
