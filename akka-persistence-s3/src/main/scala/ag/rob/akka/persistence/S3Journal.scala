@@ -17,11 +17,13 @@ class S3Journal extends AsyncWriteJournal {
   import context.{dispatcher, system}
 
   private val bucket = context.system.settings.config.getString("s3-journal.bucket")
-  private val parallelism = context.system.settings.config.getInt("s3-journal.parallelism")
+  private val writeParallelism = context.system.settings.config.getInt("s3-journal.parallelism.write")
+  private val readParallelism = context.system.settings.config.getInt("s3-journal.parallelism.read")
 
   override def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]) = {
-    Future.sequence(messages.groupBy(_.persistenceId).map { case (_, writes: Seq[AtomicWrite]) =>
-      Source.fromIterator(() => writes.iterator).flatMapMerge(parallelism, { atomicWrite =>
+    Source(messages)
+      .groupBy(Int.MaxValue, _.persistenceId)
+      .flatMapMerge(1, atomicWrite => {
         if (atomicWrite.payload.length > 1) throw new UnsupportedOperationException
 
         val persistentRepr = atomicWrite.payload.head
@@ -49,8 +51,10 @@ class S3Journal extends AsyncWriteJournal {
             "serializerId" -> serializer.identifier.toString
           )))
         )
-      }).runWith(Sink.ignore)
-    }.toSeq).map(_ => Nil)
+      })
+      .mergeSubstreamsWithParallelism(writeParallelism)
+      .runWith(Sink.ignore)
+      .map(_ => Nil)
   }
 
   override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = S3
@@ -78,7 +82,7 @@ class S3Journal extends AsyncWriteJournal {
         }
       }
       .take(max)
-      .mapAsync(parallelism) { content =>
+      .mapAsync(readParallelism) { content =>
         S3
           .download(bucket, content.key)
           .collect {

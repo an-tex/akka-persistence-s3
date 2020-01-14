@@ -12,7 +12,16 @@ class S3JournalPerfSpec extends JournalPerfSpec(S3JournalSpec.minioConfig.withFa
     |akka.actor.serialization-bindings {
     |  "akka.persistence.journal.JournalPerfSpec$Cmd" = jackson-json
     |}
+    |akka.http.host-connection-pool {
+    |  max-connections = 32
+    |  min-connections = 4
+    |  max-open-requests = 128
+    |}
     |s3-journal {
+    |  parallelism {
+    |    write = 8
+    |    read = 32
+    |  }
     |  circuit-breaker {
     |    max-failures = 10
     |    call-timeout = 60s
