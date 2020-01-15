@@ -4,7 +4,7 @@ import akka.persistence.journal.{AsyncWriteJournal, Tagged}
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.serialization.{SerializationExtension, Serializers}
 import akka.stream.alpakka.s3.scaladsl.S3
-import akka.stream.alpakka.s3.{MetaHeaders, S3Headers}
+import akka.stream.alpakka.s3.{ListBucketResultContents, MetaHeaders, S3Headers}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
@@ -73,7 +73,7 @@ class S3Journal extends AsyncWriteJournal {
 
   override def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)(recoveryCallback: PersistentRepr => Unit) = {
     S3
-      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/")))
+      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/") + "/"))
       .filter { listBucketResultsContent =>
         if (isHighestSequenceNrMarker(listBucketResultsContent.key)) false
         else {
