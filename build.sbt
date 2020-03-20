@@ -31,3 +31,4 @@ lazy val lagomPersistenceS3 = (project in file("lagom-persistence-s3"))
     ),
     crossScalaVersions := Versions.supportedScalaVersions
   ).dependsOn(akkaPersistenceS3)
+
