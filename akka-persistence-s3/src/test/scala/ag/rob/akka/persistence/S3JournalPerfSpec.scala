@@ -37,7 +37,9 @@ class S3JournalPerfSpec extends JournalPerfSpec(S3JournalSpec.minioConfig.withFa
 
   override def awaitDurationMillis = 5.minute.toMillis
 
-  override def eventsCount = 10 * 1000
+  override def eventsCount = 1000
+
+  override def measurementIterations = 5
 
   protected override def beforeAll() = {
     super.beforeAll()

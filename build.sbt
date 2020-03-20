@@ -4,14 +4,11 @@ ThisBuild / organizationName := "Andreas Gabor"
 
 ThisBuild / licenses += ("GPL-3.0", url("https://opensource.org/licenses/GPL-3.0"))
 
-publish / skip := isSnapshot.value
-
 lazy val persistenceS3 = (project in file(".")).aggregate(akkaPersistenceS3, lagomPersistenceS3)
 
 lazy val akkaPersistenceS3 = (project in file("akka-persistence-s3"))
   .settings(
     name := "akka-persistence-s3",
-    version := Versions.akkaPersistenceS3,
     libraryDependencies ++= Seq(
       "com.lightbend.akka" %% "akka-stream-alpakka-s3" % Versions.alpakka,
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
@@ -28,7 +25,6 @@ lazy val akkaPersistenceS3 = (project in file("akka-persistence-s3"))
 lazy val lagomPersistenceS3 = (project in file("lagom-persistence-s3"))
   .settings(
     name := "lagom-persistence-s3",
-    version := Versions.lagomPersistenceS3,
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-persistence" % Versions.akka,
       "com.lightbend.lagom" %% "lagom-scaladsl-persistence" % Versions.lagom,

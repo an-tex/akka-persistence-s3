@@ -4,7 +4,7 @@ import akka.persistence.journal.{AsyncWriteJournal, Tagged}
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.serialization.{SerializationExtension, Serializers}
 import akka.stream.alpakka.s3.scaladsl.S3
-import akka.stream.alpakka.s3.{ListBucketResultContents, MetaHeaders, S3Headers}
+import akka.stream.alpakka.s3.{MetaHeaders, S3Attributes, S3Headers}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
@@ -19,6 +19,8 @@ class S3Journal extends AsyncWriteJournal {
   private val bucket = context.system.settings.config.getString("s3-journal.bucket")
   private val writeParallelism = context.system.settings.config.getInt("s3-journal.parallelism.write")
   private val readParallelism = context.system.settings.config.getInt("s3-journal.parallelism.read")
+
+  val s3Attributes = S3Attributes.settingsPath("s3-journal.alpakka.s3")
 
   override def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]) = {
     Source(messages)
@@ -50,30 +52,35 @@ class S3Journal extends AsyncWriteJournal {
             "deleted" -> persistentRepr.deleted.toString,
             "serializerId" -> serializer.identifier.toString
           )))
-        )
+        ).withAttributes(s3Attributes)
       })
       .mergeSubstreamsWithParallelism(writeParallelism)
       .runWith(Sink.ignore)
       .map(_ => Nil)
   }
 
-  override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) = S3
-    .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/")))
-    .filter(listBucketResultsContent => extractSequenceNr(listBucketResultsContent.key) <= toSequenceNr)
-    .flatMapConcat(content =>
-      S3.deleteObject(bucket, content.key).map(_ => content.key)
-    )
-    .runWith(Sink.lastOption)
-    .flatMap(maybeLastKey =>
-      maybeLastKey.fold(Future.successful(())) { lastKey =>
-        val key = s"${persistenceId.replaceAllLiterally("|", "/")}/${f"${extractSequenceNr(lastKey)}%019d"}$sequenceNrMakerSuffix"
-        S3.putObject(bucket, key, Source.empty, 0L, s3Headers = S3Headers.empty).runWith(Sink.ignore).map(_ => ())
+  override def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long) =
+    S3
+      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/"))).withAttributes(s3Attributes)
+      .filter(listBucketResultsContent => extractSequenceNr(listBucketResultsContent.key) <= toSequenceNr)
+      .flatMapConcat(content =>
+        S3
+          .deleteObject(bucket, content.key).withAttributes(s3Attributes)
+          .map(_ => content.key)
+      )
+      .runWith(Sink.lastOption)
+      .flatMap(maybeLastKey =>
+        maybeLastKey.fold(Future.successful(())) { lastKey =>
+          val key = s"${persistenceId.replaceAllLiterally("|", "/")}/${f"${extractSequenceNr(lastKey)}%019d"}$sequenceNrMakerSuffix"
+          S3
+            .putObject(bucket, key, Source.empty, 0L, s3Headers = S3Headers.empty).withAttributes(s3Attributes)
+            .runWith(Sink.ignore).map(_ => ())
       }
     )
 
   override def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)(recoveryCallback: PersistentRepr => Unit) = {
     S3
-      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/") + "/"))
+      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/") + "/")).withAttributes(s3Attributes)
       .filter { listBucketResultsContent =>
         if (isHighestSequenceNrMarker(listBucketResultsContent.key)) false
         else {
@@ -84,7 +91,7 @@ class S3Journal extends AsyncWriteJournal {
       .take(max)
       .mapAsync(readParallelism) { content =>
         S3
-          .download(bucket, content.key)
+          .download(bucket, content.key).withAttributes(s3Attributes)
           .collect {
             case Some(elem) => elem
           }
@@ -112,7 +119,7 @@ class S3Journal extends AsyncWriteJournal {
 
   override def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long) = {
     S3
-      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/")))
+      .listBucket(bucket, Some(persistenceId.replaceAllLiterally("|", "/"))).withAttributes(s3Attributes)
       .map(_.key)
       .runWith(Sink.lastOption)
       .map(_.fold(0L)(extractSequenceNr))

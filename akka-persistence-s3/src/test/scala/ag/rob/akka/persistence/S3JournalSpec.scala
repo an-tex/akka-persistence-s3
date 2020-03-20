@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter
 
 import akka.actor.ActorSystem
 import akka.persistence.journal.JournalSpec
+import akka.stream.alpakka.s3.S3Attributes
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.Sink
 import com.typesafe.config.ConfigFactory
@@ -40,27 +41,33 @@ object S3JournalSpec {
       .replaceAllLiterally(":", "-")
       .replaceAllLiterally(".", "-")
 
-    s"akka-persistence-s3-spec-${nowS3Compatible}-${Random.alphanumeric.take(4).mkString}".toLowerCase
+    s"akka-persistence-s3-spec-$nowS3Compatible-${Random.alphanumeric.take(4).mkString}".toLowerCase
   }
+
+  implicit val s3Attributes = S3Attributes.settingsPath("s3-journal.alpakka.s3")
 
   val minioConfig = ConfigFactory.parseString(
     s"""
        |akka.persistence.journal.plugin = "s3-journal"
-       |alpakka.s3 {
-       |  aws {
-       |    credentials {
-       |      provider = static
-       |      access-key-id = "minio"
-       |      secret-access-key = "minio123"
+       |s3-journal {
+       |  bucket = "$testBucket"
+       |  alpakka.s3 {
+       |    aws {
+       |      credentials {
+       |        provider = static
+       |        access-key-id = "minio"
+       |        secret-access-key = "minio123"
+       |      }
+       |      region {
+       |       provider = static
+       |        default-region = "eu-central-1"
+       |      }
        |    }
-       |    region {
-       |      provider = static
-       |      default-region = "eu-central-1"
-       |    }
+       |    # how to use virtual-host style access with local minio?
+       |    path-style-access = force
+       |    endpoint-url = "http://127.0.0.1:9876"
        |  }
-       |  endpoint-url = "http://127.0.0.1:9876"
        |}
-       |s3-journal.bucket = "$testBucket"
        |""".stripMargin).withFallback(ConfigFactory.load())
 
   def beforeAll()(implicit actorSystem: ActorSystem) = {
@@ -69,9 +76,9 @@ object S3JournalSpec {
 
   def afterAll()(implicit actorSystem: ActorSystem) = {
     val cleanup = S3
-      .listBucket(S3JournalSpec.testBucket, None)
+      .listBucket(S3JournalSpec.testBucket, None).withAttributes(s3Attributes)
       .flatMapConcat(contents =>
-        S3.deleteObject(S3JournalSpec.testBucket, contents.key)
+        S3.deleteObject(S3JournalSpec.testBucket, contents.key).withAttributes(s3Attributes)
       )
       .runWith(Sink.ignore)
       .flatMap(_ =>
